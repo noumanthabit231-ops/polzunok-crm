@@ -88,6 +88,8 @@ export default function Home() {
   const [items, setItems] = useState<EstablishmentWithStatus[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [search, setSearch] = useState('')
+  const filteredItems = items.filter(i => i.name.toLowerCase().includes(search.toLowerCase()))
 
   const load = async () => {
     try {
@@ -132,6 +134,36 @@ export default function Home() {
         </div>
       )}
 
+      {/* Search */}
+      {!loading && items.length > 0 && (
+        <div style={{ position: 'relative', marginBottom: 14 }}>
+          <svg style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'hsl(210, 8%, 60%)', pointerEvents: 'none' }}
+            width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
+            <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+          </svg>
+          <input type="text" value={search} onChange={e => setSearch(e.target.value)}
+            placeholder="Поиск по названию..."
+            style={{
+              width: '100%', padding: '9px 14px 9px 34px', fontSize: 13,
+              border: '1px solid hsl(210, 15%, 88%)', borderRadius: 8,
+              background: 'white', outline: 'none', fontFamily: 'inherit',
+            }}
+            onFocus={e => { e.target.style.borderColor = accent; e.target.style.boxShadow = '0 0 0 2px hsla(210,60%,50%,0.12)' }}
+            onBlur={e => { e.target.style.borderColor = 'hsl(210,15%,88%)'; e.target.style.boxShadow = 'none' }} />
+          {search && (
+            <button onClick={() => setSearch('')} style={{
+              position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)',
+              background: 'none', border: 'none', cursor: 'pointer',
+              color: 'hsl(210, 8%, 60%)', padding: 4,
+            }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
+                <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Loading */}
       {loading && (
         <div style={{ display: 'flex', justifyContent: 'center', gap: 4, padding: '60px 0' }}>
@@ -173,9 +205,9 @@ export default function Home() {
       )}
 
       {/* List */}
-      {!loading && items.length > 0 && (
+      {!loading && filteredItems.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {items.map((item, i) => (
+          {filteredItems.map((item, i) => (
             <div key={item.id} className="animate-slideUp" style={{
               animationDelay: `${i * 0.06}s`,
               background: 'white',
@@ -245,6 +277,12 @@ export default function Home() {
               </Link>
             </div>
           ))}
+        </div>
+      )}
+
+      {!loading && items.length > 0 && search && filteredItems.length === 0 && (
+        <div style={{ textAlign: 'center', paddingTop: 40, color: 'hsl(210, 8%, 55%)', fontSize: 13 }}>
+          Ничего не найдено
         </div>
       )}
     </div>

@@ -288,7 +288,7 @@ export default function Home() {
       )}
 
       {/* 🎮 Game */}
-      <Game />
+      <Game names={items.map(i => i.name)} />
     </div>
   )
 }

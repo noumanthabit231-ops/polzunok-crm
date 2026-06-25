@@ -66,14 +66,27 @@ export default function Game({ names: allNames }: { names: string[] }) {
       let added = 0
       const alive: FallingItem[] = []
 
+      const CAR_H = 32
+
       for (const c of arr) {
         let ny = c.y + c.speed
-        const cx = bx + BASKET_W / 2
-        const cy = HEIGHT - BASKET_H / 2
-        const dx = c.x - cx
-        const dy = ny - cy
+        const cw = c.width
 
-        if (ny >= HEIGHT - BASKET_H && Math.abs(dx) < 42 && Math.abs(dy) < 32) {
+        // AABB overlap check: car vs basket
+        const carLeft = c.x
+        const carRight = c.x + cw
+        const carTop = ny
+        const carBottom = ny + CAR_H
+
+        const baskLeft = bx
+        const baskRight = bx + BASKET_W
+        const baskTop = HEIGHT - BASKET_H
+        const baskBottom = HEIGHT
+
+        const overlapX = carRight > baskLeft && carLeft < baskRight
+        const overlapY = carBottom > baskTop && carTop < baskBottom
+
+        if (overlapX && overlapY) {
           added++
           continue
         }

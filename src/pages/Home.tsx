@@ -112,6 +112,49 @@ export default function Home() {
     catch (e: any) { alert(e.message) }
   }
 
+  // ✏️ Doodle helpers
+  let drawing = false
+  const getPos = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const c = e.currentTarget
+    const r = c.getBoundingClientRect()
+    return { x: (e.clientX - r.left) * (c.width / r.width), y: (e.clientY - r.top) * (c.height / r.height) }
+  }
+  const getTouchPos = (c: HTMLCanvasElement, t: React.Touch) => {
+    const r = c.getBoundingClientRect()
+    return { x: (t.clientX - r.left) * (c.width / r.width), y: (t.clientY - r.top) * (c.height / r.height) }
+  }
+  const startDraw = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    drawing = true
+    const c = e.currentTarget; const ctx = c.getContext('2d')
+    if (!ctx) return
+    const p = getPos(e)
+    ctx.beginPath(); ctx.moveTo(p.x, p.y)
+    ctx.strokeStyle = '#334155'; ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.lineJoin = 'round'
+  }
+  const draw = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!drawing) return
+    const c = e.currentTarget; const ctx = c.getContext('2d')
+    if (!ctx) return
+    const p = getPos(e)
+    ctx.lineTo(p.x, p.y); ctx.stroke()
+  }
+  const stopDraw = () => { drawing = false }
+  const touchStart = (e: React.TouchEvent<HTMLCanvasElement>) => {
+    drawing = true
+    const c = e.currentTarget; const ctx = c.getContext('2d')
+    if (!ctx) return
+    const p = getTouchPos(c, e.touches[0])
+    ctx.beginPath(); ctx.moveTo(p.x, p.y)
+    ctx.strokeStyle = '#334155'; ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.lineJoin = 'round'
+  }
+  const touchDraw = (e: React.TouchEvent<HTMLCanvasElement>) => {
+    if (!drawing) return
+    const c = e.currentTarget; const ctx = c.getContext('2d')
+    if (!ctx) return
+    const p = getTouchPos(c, e.touches[0])
+    ctx.lineTo(p.x, p.y); ctx.stroke()
+  }
+
   return (
     <div className="animate-fadeIn">
       {/* Stats */}
@@ -285,6 +328,32 @@ export default function Home() {
           Ничего не найдено
         </div>
       )}
+
+      {/* ✏️ Drawing canvas */}
+      <div style={{ marginTop: 32 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+          <span style={{ fontSize: 12, color: 'hsl(210, 8%, 55%)' }}>✏️ Побочка</span>
+          <button id="clearCanvasBtn" onClick={() => {
+            const c = document.getElementById('doodleCanvas') as HTMLCanvasElement
+            if (c) { const ctx = c.getContext('2d'); if (ctx) { ctx.clearRect(0, 0, c.width, c.height) } }
+          }} style={{
+            background: 'none', border: '1px solid hsl(210,15%,88%)', borderRadius: 6,
+            padding: '4px 10px', fontSize: 11, color: 'hsl(210,10%,50%)', cursor: 'pointer',
+            fontFamily: 'inherit',
+          }}>Очистить</button>
+        </div>
+        <canvas id="doodleCanvas" width="680" height="200"
+          onMouseDown={startDraw} onMouseMove={draw} onMouseUp={stopDraw} onMouseLeave={stopDraw}
+          onTouchStart={touchStart} onTouchMove={touchDraw} onTouchEnd={stopDraw}
+          style={{
+            width: '100%', height: 200, borderRadius: 10,
+            border: '1px solid hsl(210, 15%, 88%)',
+            background: 'white',
+            cursor: 'crosshair',
+            display: 'block',
+            touchAction: 'none',
+          }} />
+      </div>
     </div>
   )
 }

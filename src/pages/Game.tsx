@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 
 const GAME_DURATION = 30
 const WIDTH = 680
+let actualW = WIDTH
 const HEIGHT = 340
 const BASKET_W = 90
 const BASKET_H = 56
@@ -120,11 +121,12 @@ export default function Game({ names: allNames }: { names: string[] }) {
       const name = names[Math.floor(Math.random() * names.length)]
       const textW = Math.max(70, name.length * 8)
       const speed = 0.7 + Math.random() * 0.5 + (GAME_DURATION - timeLeft) * 0.025
+      const aw = Math.max(WIDTH, actualW)
 
       idRef.current++
       arr.push({
         id: idRef.current,
-        x: 10 + Math.random() * (WIDTH - textW - 40),
+        x: Math.max(2, Math.random() * (aw - textW - 6)),
         y: -50,
         name,
         speed: Math.min(speed, 3),
@@ -164,6 +166,13 @@ export default function Game({ names: allNames }: { names: string[] }) {
     basketX.current = WIDTH / 2 - BASKET_W / 2
     if (basketRef.current) basketRef.current.style.transform = `translateX(${basketX.current}px)`
   }
+
+  // Measure actual container width
+  useEffect(() => {
+    if (containerRef.current) {
+      actualW = Math.max(300, containerRef.current.clientWidth)
+    }
+  }, [])
 
   const names = allNames
   const hasNames = names.length > 0

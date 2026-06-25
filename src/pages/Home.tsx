@@ -10,202 +10,188 @@ import type { EstablishmentWithStatus } from '../types'
 import { format, parseISO } from 'date-fns'
 import { ru } from 'date-fns/locale'
 
+const accent = 'hsl(210, 60%, 50%)'
+
+function ProgressBar({ pct, daysElapsed, daysLeft }: {
+  pct: number; daysElapsed: number; daysLeft: number
+}) {
+  const color = pct < 60 ? 'hsl(160, 60%, 45%)' :
+    pct < 80 ? 'hsl(38, 80%, 50%)' :
+    pct < 92 ? 'hsl(25, 80%, 50%)' : 'hsl(0, 65%, 55%)'
+  const bg = pct < 60 ? 'hsl(160, 60%, 92%)' :
+    pct < 80 ? 'hsl(38, 80%, 92%)' :
+    pct < 92 ? 'hsl(25, 80%, 92%)' : 'hsl(0, 65%, 93%)'
+
+  return (
+    <div>
+      <div style={{ height: 6, background: bg, borderRadius: 3, overflow: 'hidden' }}>
+        <div style={{ width: `${Math.max(2, pct)}%`, height: '100%', background: color, borderRadius: 3, transition: 'width 0.6s ease' }} />
+      </div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6, fontSize: 12, color: 'hsl(210, 8%, 55%)' }}>
+        <span>{daysElapsed} дн</span>
+        <span style={{ fontWeight: 500, color: 'hsl(210, 10%, 40%)' }}>{daysLeft > 0 ? `осталось ${daysLeft}` : 'последний день'}</span>
+      </div>
+    </div>
+  )
+}
+
 export default function Home() {
   const [items, setItems] = useState<EstablishmentWithStatus[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const loadData = async () => {
+  const load = async () => {
     try {
-      setLoading(true)
-      setError(null)
-      const establishments = await fetchEstablishments()
-      const withPayments = await Promise.all(
-        establishments.map(async (est) => {
-          const payments = await fetchPayments(est.id)
-          return computeEstablishmentStatus(est, payments)
-        })
-      )
-      setItems(withPayments)
-    } catch (e: any) {
-      setError(e.message || 'Ошибка загрузки')
-    } finally {
-      setLoading(false)
-    }
+      setLoading(true); setError(null)
+      const ests = await fetchEstablishments()
+      const withP = await Promise.all(ests.map(async (e) => {
+        const p = await fetchPayments(e.id)
+        return computeEstablishmentStatus(e, p)
+      }))
+      setItems(withP)
+    } catch (e: any) { setError(e.message || 'Ошибка') }
+    finally { setLoading(false) }
   }
 
-  useEffect(() => {
-    loadData()
-  }, [])
+  useEffect(() => { load() }, [])
 
   const handleDelete = async (id: string, name: string) => {
-    if (!confirm(`Удалить «${name}» и все её платежи?`)) return
-    try {
-      await deleteEstablishment(id)
-      setItems((prev) => prev.filter((i) => i.id !== id))
-    } catch (e: any) {
-      alert('Ошибка: ' + e.message)
-    }
-  }
-
-  const getBarColor = (pct: number) => {
-    if (pct < 50) return 'bg-emerald-500'
-    if (pct < 75) return 'bg-amber-400'
-    if (pct < 90) return 'bg-orange-500'
-    return 'bg-red-500'
-  }
-
-  const getBadgeColor = (pct: number) => {
-    if (pct < 50) return 'bg-emerald-100 text-emerald-700'
-    if (pct < 75) return 'bg-amber-100 text-amber-700'
-    if (pct < 90) return 'bg-orange-100 text-orange-700'
-    return 'bg-red-100 text-red-700'
+    if (!window.confirm(`Удалить «${name}»?`)) return
+    try { await deleteEstablishment(id); setItems(p => p.filter(i => i.id !== id)) }
+    catch (e: any) { alert(e.message) }
   }
 
   return (
     <div className="animate-fadeIn">
-      {/* Stats header */}
+      {/* Stats */}
       {!loading && items.length > 0 && (
-        <div className="grid grid-cols-3 gap-3 mb-6">
-          <div className="bg-white/70 backdrop-blur rounded-2xl p-3.5 text-center border border-amber-100/50 shadow-sm">
-            <div className="text-2xl font-bold text-amber-700">{items.length}</div>
-            <div className="text-xs text-stone-500 mt-0.5">Заведений</div>
-          </div>
-          <div className="bg-white/70 backdrop-blur rounded-2xl p-3.5 text-center border border-amber-100/50 shadow-sm">
-            <div className="text-2xl font-bold text-emerald-600">
-              {items.filter((i) => i.isActive).length}
+        <div style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
+          {[
+            { label: 'Всего', value: items.length, color: 'hsl(210, 15%, 20%)' },
+            { label: 'Активно', value: items.filter(i => i.isActive).length, color: 'hsl(160, 60%, 40%)' },
+            { label: 'Истекло', value: items.filter(i => !i.isActive).length, color: 'hsl(0, 65%, 50%)' },
+          ].map((s, i) => (
+            <div key={s.label} className="animate-slideUp" style={{
+              flex: 1, background: 'white', borderRadius: 10, padding: '12px 8px',
+              textAlign: 'center', border: '1px solid hsl(210, 15%, 92%)',
+              animationDelay: `${i * 0.05}s`,
+            }}>
+              <div style={{ fontSize: 20, fontWeight: 700, color: s.color }}>{s.value}</div>
+              <div style={{ fontSize: 11, color: 'hsl(210, 8%, 55%)', marginTop: 2 }}>{s.label}</div>
             </div>
-            <div className="text-xs text-stone-500 mt-0.5">Активных</div>
-          </div>
-          <div className="bg-white/70 backdrop-blur rounded-2xl p-3.5 text-center border border-amber-100/50 shadow-sm">
-            <div className="text-2xl font-bold text-red-500">
-              {items.filter((i) => !i.isActive).length}
-            </div>
-            <div className="text-xs text-stone-500 mt-0.5">Истекло</div>
-          </div>
+          ))}
         </div>
       )}
 
+      {/* Loading */}
       {loading && (
-        <div className="flex flex-col items-center justify-center py-20 gap-3">
-          <div className="flex gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-bounce" style={{ animationDelay: '0s' }} />
-            <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-bounce" style={{ animationDelay: '0.15s' }} />
-            <span className="w-2.5 h-2.5 rounded-full bg-amber-600 animate-bounce" style={{ animationDelay: '0.3s' }} />
-          </div>
-          <p className="text-stone-400 text-sm">Загрузка...</p>
+        <div style={{ display: 'flex', justifyContent: 'center', gap: 4, padding: '60px 0' }}>
+          {[0, 1, 2].map(i => (
+            <div key={i} className="dot-pulse" style={{
+              width: 8, height: 8, borderRadius: '50%',
+              background: 'hsl(210, 60%, 50%)',
+            }} />
+          ))}
         </div>
       )}
 
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-2xl text-sm">
+        <div style={{ background: 'hsl(0, 65%, 93%)', color: 'hsl(0, 65%, 45%)', padding: '12px 16px', borderRadius: 10, fontSize: 13 }}>
           {error}
         </div>
       )}
 
+      {/* Empty */}
       {!loading && !error && items.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-20 animate-slideUp">
-          <div className="w-20 h-20 rounded-2xl bg-amber-100 flex items-center justify-center text-4xl mb-5 shadow-sm">
-            📋
-          </div>
-          <h2 className="text-xl font-bold text-stone-700 mb-2">Пока пусто</h2>
-          <p className="text-stone-400 text-sm mb-6">Добавьте первое заведение</p>
-          <Link
-            to="/add"
-            className="inline-flex items-center gap-2 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-700 hover:to-amber-600 text-white px-6 py-3 rounded-xl font-medium shadow-md hover:shadow-lg transition-all active:scale-95 no-underline"
-          >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+        <div className="animate-scaleIn" style={{
+          textAlign: 'center', paddingTop: 80,
+        }}>
+          <div style={{ fontSize: 40, marginBottom: 16, opacity: 0.5 }}>📋</div>
+          <h2 style={{ fontSize: 17, fontWeight: 600, color: 'hsl(210, 15%, 30%)', marginBottom: 6 }}>Нет заведений</h2>
+          <p style={{ fontSize: 13, color: 'hsl(210, 8%, 55%)', marginBottom: 24 }}>Добавьте первое заведение</p>
+          <Link to="/add" style={{
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+            background: accent, color: 'white', padding: '10px 20px',
+            borderRadius: 8, fontWeight: 500, fontSize: 13,
+            textDecoration: 'none',
+          }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round">
+              <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
             </svg>
             Добавить заведение
           </Link>
         </div>
       )}
 
+      {/* List */}
       {!loading && items.length > 0 && (
-        <div className="flex flex-col gap-4">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {items.map((item, i) => (
-            <div
-              key={item.id}
-              className={`bg-white rounded-2xl shadow-sm border border-amber-100/80 overflow-hidden hover:shadow-md transition-all animate-slideUp`}
-              style={{ animationDelay: `${i * 0.06}s` }}
-            >
-              {/* Card header */}
-              <div className="px-5 pt-4 pb-3">
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex-1 min-w-0">
-                    <h2 className="font-bold text-lg text-stone-800 truncate">
-                      {item.name}
-                    </h2>
+            <div key={item.id} className="animate-slideUp" style={{
+              animationDelay: `${i * 0.06}s`,
+              background: 'white',
+              borderRadius: 12,
+              border: '1px solid hsl(210, 15%, 92%)',
+              overflow: 'hidden',
+              transition: 'box-shadow 0.15s',
+            }}>
+              {/* Body */}
+              <div style={{ padding: '16px 18px 14px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: 15, color: 'hsl(210, 15%, 20%)' }}>{item.name}</div>
                     {item.activePayment && (
-                      <div className="flex items-center gap-2 mt-0.5">
-                        <span className="text-xs text-stone-400">
-                          {format(parseISO(item.activePayment.start_date), 'd MMM', { locale: ru })} — {format(parseISO(item.activePayment.end_date), 'd MMM yyyy', { locale: ru })}
-                        </span>
+                      <div style={{ fontSize: 12, color: 'hsl(210, 8%, 55%)', marginTop: 2 }}>
+                        {format(parseISO(item.activePayment.start_date), 'd MMM', { locale: ru })} — {format(parseISO(item.activePayment.end_date), 'd MMM yyyy', { locale: ru })}
                       </div>
                     )}
                   </div>
-                  <div className="flex items-center gap-2 ml-3">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     {item.isActive ? (
-                      <span className={`text-xs font-semibold px-2.5 py-1 rounded-lg ${getBadgeColor(item.progressPercent)}`}>
-                        {item.daysElapsed}/{item.daysTotal} дн
+                      <span style={{
+                        fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 6,
+                        background: item.progressPercent < 60 ? 'hsl(160, 60%, 92%)' :
+                          item.progressPercent < 80 ? 'hsl(38, 80%, 92%)' : 'hsl(0, 65%, 93%)',
+                        color: item.progressPercent < 60 ? 'hsl(160, 60%, 35%)' :
+                          item.progressPercent < 80 ? 'hsl(38, 80%, 40%)' : 'hsl(0, 65%, 45%)',
+                      }}>
+                        {item.progressPercent}%
                       </span>
                     ) : (
-                      <span className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-stone-100 text-stone-500">
-                        Истекла
-                      </span>
+                      <span style={{ fontSize: 11, color: 'hsl(210, 8%, 60%)' }}>Истекла</span>
                     )}
-                    <button
-                      onClick={() => handleDelete(item.id, item.name)}
-                      className="text-stone-300 hover:text-red-500 transition-colors p-1 -mr-1"
-                      title="Удалить"
-                    >
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                      </svg>
+                    <button onClick={() => handleDelete(item.id, item.name)}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'hsl(210, 8%, 75%)', padding: 2 }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}
+                        strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
                     </button>
                   </div>
                 </div>
 
-                {/* Progress */}
-                {item.isActive && (
-                  <div>
-                    <div className="flex items-center justify-between text-xs text-stone-400 mb-1.5">
-                      <span>Прогресс</span>
-                      <span className="font-semibold text-stone-600">{item.progressPercent}%</span>
-                    </div>
-                    <div className="h-2.5 bg-amber-50 rounded-full overflow-hidden">
-                      <div
-                        className={`h-full rounded-full transition-all duration-700 ease-out ${getBarColor(item.progressPercent)}`}
-                        style={{ width: `${Math.max(2, item.progressPercent)}%` }}
-                      />
-                    </div>
-                    <div className="flex items-center justify-between mt-1.5">
-                      <span className="text-xs text-stone-400">
-                        День {item.daysElapsed}
-                      </span>
-                      <span className="text-xs font-medium text-stone-500">
-                        {item.daysLeft > 0 ? `Осталось ${item.daysLeft} дн.` : 'Последний день'}
-                      </span>
-                    </div>
-                  </div>
-                )}
-
-                {!item.isActive && (
-                  <div className="text-sm text-stone-400 italic">
-                    Нет активной подписки
-                  </div>
+                {item.isActive ? (
+                  <ProgressBar
+                    pct={item.progressPercent}
+                    daysElapsed={item.daysElapsed}
+                    daysLeft={item.daysLeft}
+                  />
+                ) : (
+                  <div style={{ fontSize: 13, color: 'hsl(210, 8%, 55%)' }}>Нет активной подписки</div>
                 )}
               </div>
 
-              {/* Divider + history link */}
-              <Link
-                to={`/history/${item.id}`}
-                className="flex items-center justify-between px-5 py-3 bg-amber-50/60 hover:bg-amber-100/60 border-t border-amber-100/80 text-sm font-medium text-amber-700 transition-colors no-underline group"
+              {/* Footer */}
+              <Link to={`/history/${item.id}`} style={{
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                padding: '11px 18px', borderTop: '1px solid hsl(210, 15%, 92%)',
+                fontSize: 13, color: 'hsl(210, 10%, 50%)', textDecoration: 'none',
+                transition: 'background 0.15s',
+              }}
+                className="hover:bg-[hsl(210,15%,97%)]"
               >
                 <span>История оплат</span>
-                <svg className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round"
+                  className="group-hover:translate-x-0.5 transition-transform">
+                  <polyline points="9 18 15 12 9 6" />
                 </svg>
               </Link>
             </div>

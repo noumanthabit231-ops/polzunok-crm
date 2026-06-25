@@ -10,166 +10,140 @@ import type { EstablishmentWithStatus } from '../types'
 import { format, parseISO } from 'date-fns'
 import { ru } from 'date-fns/locale'
 
+const accent = 'hsl(210, 60%, 50%)'
+
+function ProgressRing({ pct, daysElapsed, daysTotal, daysLeft }: {
+  pct: number; daysElapsed: number; daysTotal: number; daysLeft: number
+}) {
+  const r = 36; const circ = 2 * Math.PI * r
+  const color = pct < 60 ? 'hsl(160, 60%, 45%)' :
+    pct < 80 ? 'hsl(38, 80%, 50%)' :
+    pct < 92 ? 'hsl(25, 80%, 50%)' : 'hsl(0, 65%, 55%)'
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
+      <svg width="80" height="80" viewBox="0 0 80 80">
+        <circle cx="40" cy="40" r={r} fill="none" stroke="hsl(210, 15%, 92%)" strokeWidth="6" />
+        <circle cx="40" cy="40" r={r} fill="none" stroke={color} strokeWidth="6"
+          strokeLinecap="round" strokeDasharray={circ}
+          strokeDashoffset={circ - (circ * pct) / 100}
+          transform="rotate(-90 40 40)"
+          style={{ transition: 'stroke-dashoffset 0.8s ease' }} />
+        <text x="40" y="42" textAnchor="middle" dominantBaseline="central"
+          fontSize="18" fontWeight="700" fill="hsl(210, 15%, 20%)">{pct}%</text>
+      </svg>
+      <div>
+        <div style={{ fontSize: 24, fontWeight: 700, color: 'hsl(210, 15%, 20%)' }}>{daysLeft} <span style={{ fontSize: 14, fontWeight: 400, color: 'hsl(210, 8%, 55%)' }}>дн</span></div>
+        <div style={{ fontSize: 12, color: 'hsl(210, 8%, 55%)', marginTop: 2 }}>день {daysElapsed} из {daysTotal}</div>
+      </div>
+    </div>
+  )
+}
+
 export default function History() {
   const { id } = useParams<{ id: string }>()
   const [item, setItem] = useState<EstablishmentWithStatus | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-
-  // New payment form
   const [showForm, setShowForm] = useState(false)
   const [amount, setAmount] = useState('')
   const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0])
   const [endDate, setEndDate] = useState('')
   const [saving, setSaving] = useState(false)
 
-  const loadData = async () => {
+  const load = async () => {
     if (!id) return
     try {
-      setLoading(true)
-      setError(null)
-      const establishments = await fetchEstablishments()
-      const est = establishments.find((e) => e.id === id)
-      if (!est) { setError('Заведение не найдено'); return }
-      const payments = await fetchPayments(id)
-      setItem(computeEstablishmentStatus(est, payments))
-    } catch (e: any) {
-      setError(e.message || 'Ошибка загрузки')
-    } finally {
-      setLoading(false)
-    }
+      setLoading(true); setError(null)
+      const ests = await fetchEstablishments()
+      const e = ests.find(x => x.id === id)
+      if (!e) { setError('Не найдено'); return }
+      const p = await fetchPayments(id)
+      setItem(computeEstablishmentStatus(e, p))
+    } catch (e: any) { setError(e.message) }
+    finally { setLoading(false) }
   }
 
-  useEffect(() => { loadData() }, [id])
+  useEffect(() => { load() }, [id])
 
-  const handleAddPayment = async (e: React.FormEvent) => {
+  const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!id || !amount || !startDate || !endDate) {
-      setError('Заполните все поля'); return
-    }
-    if (new Date(endDate) <= new Date(startDate)) {
-      setError('Дата окончания должна быть позже даты начала'); return
-    }
+    if (!id || !amount || !startDate || !endDate) { setError('Заполните поля'); return }
+    if (new Date(endDate) <= new Date(startDate)) { setError('Дата конца должна быть позже'); return }
     setSaving(true); setError(null)
     try {
       await createPayment(id, Number(amount), startDate, endDate)
       setShowForm(false); setAmount('')
       setStartDate(new Date().toISOString().split('T')[0]); setEndDate('')
-      loadData()
-    } catch (e: any) {
-      setError(e.message || 'Ошибка')
-    } finally { setSaving(false) }
+      load()
+    } catch (e: any) { setError(e.message) }
+    finally { setSaving(false) }
   }
 
-  if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center py-20 gap-3">
-        <div className="flex gap-1.5">
-          <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-bounce" style={{ animationDelay: '0s' }} />
-          <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-bounce" style={{ animationDelay: '0.15s' }} />
-          <span className="w-2.5 h-2.5 rounded-full bg-amber-600 animate-bounce" style={{ animationDelay: '0.3s' }} />
-        </div>
-        <p className="text-stone-400 text-sm">Загрузка...</p>
-      </div>
-    )
-  }
-
-  if (error || !item) {
-    return (
-      <div className="animate-fadeIn">
-        <Link to="/" className="flex items-center gap-1.5 text-stone-500 hover:text-stone-700 text-sm mb-5 transition-colors group">
-          <svg className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
-          </svg>
-          Назад
-        </Link>
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-2xl text-sm">{error || 'Заведение не найдено'}</div>
-      </div>
-    )
-  }
-
-  const sortedPayments = [...item.payments].sort(
-    (a, b) => new Date(b.start_date).getTime() - new Date(a.start_date).getTime()
+  if (loading) return (
+    <div style={{ display: 'flex', justifyContent: 'center', gap: 4, padding: '60px 0' }}>
+      {[0, 1, 2].map(i => <div key={i} className="dot-pulse" style={{ width: 8, height: 8, borderRadius: '50%', background: accent }} />)}
+    </div>
   )
+
+  if (error || !item) return (
+    <div className="animate-fadeIn">
+      <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'hsl(210,10%,50%)', fontSize: 13, textDecoration: 'none', marginBottom: 20 }}>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
+          <polyline points="15 18 9 12 15 6" />
+        </svg>
+        Назад
+      </Link>
+      <div style={{ background: 'hsl(0,65%,93%)', color: 'hsl(0,65%,45%)', padding: '12px 16px', borderRadius: 10, fontSize: 13 }}>{error}</div>
+    </div>
+  )
+
+  const sorted = [...item.payments].sort((a, b) => new Date(b.start_date).getTime() - new Date(a.start_date).getTime())
 
   return (
     <div className="animate-fadeIn">
-      {/* Back */}
-      <Link to="/" className="flex items-center gap-1.5 text-stone-500 hover:text-stone-700 text-sm mb-5 transition-colors group">
-        <svg className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+      <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'hsl(210,10%,50%)', fontSize: 13, textDecoration: 'none', marginBottom: 20 }}>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
+          <polyline points="15 18 9 12 15 6" />
         </svg>
         Назад
       </Link>
 
-      {/* Hero card */}
-      <div className="bg-white rounded-2xl shadow-sm border border-amber-100/80 p-6 mb-6">
-        <div className="flex items-start justify-between mb-4">
+      {/* Hero */}
+      <div style={{ background: 'white', borderRadius: 12, border: '1px solid hsl(210,15%,92%)', padding: 24, marginBottom: 24 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
           <div>
-            <h1 className="text-2xl font-bold text-stone-800">{item.name}</h1>
+            <h1 style={{ fontSize: 22, fontWeight: 700, color: 'hsl(210,15%,20%)', margin: 0 }}>{item.name}</h1>
             {item.activePayment && (
-              <p className="text-sm text-stone-400 mt-1">
+              <p style={{ fontSize: 13, color: 'hsl(210,8%,55%)', marginTop: 4, margin: '4px 0 0' }}>
                 {format(parseISO(item.activePayment.start_date), 'd MMMM yyyy', { locale: ru })} — {format(parseISO(item.activePayment.end_date), 'd MMMM yyyy', { locale: ru })}
               </p>
             )}
           </div>
-          <span className="text-3xl">📅</span>
         </div>
 
         {item.isActive ? (
-          <div className="bg-amber-50/60 rounded-xl p-4">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium text-stone-600">Прогресс подписки</span>
-              <span className={`text-sm font-bold ${
-                item.progressPercent < 50 ? 'text-emerald-600' :
-                item.progressPercent < 75 ? 'text-amber-600' :
-                item.progressPercent < 90 ? 'text-orange-600' : 'text-red-600'
-              }`}>
-                {item.progressPercent}%
-              </span>
-            </div>
-            <div className="h-3 bg-amber-100/80 rounded-full overflow-hidden mb-3">
-              <div
-                className={`h-full rounded-full transition-all duration-700 ease-out ${
-                  item.progressPercent < 50 ? 'bg-emerald-500' :
-                  item.progressPercent < 75 ? 'bg-amber-400' :
-                  item.progressPercent < 90 ? 'bg-orange-500' : 'bg-red-500'
-                }`}
-                style={{ width: `${item.progressPercent}%` }}
-              />
-            </div>
-            <div className="grid grid-cols-3 gap-3 text-center">
-              <div>
-                <div className="text-xl font-bold text-stone-700">{item.daysElapsed}</div>
-                <div className="text-xs text-stone-400">Дней прошло</div>
-              </div>
-              <div>
-                <div className="text-xl font-bold text-stone-700">{item.daysTotal}</div>
-                <div className="text-xs text-stone-400">Всего дней</div>
-              </div>
-              <div>
-                <div className="text-xl font-bold text-amber-600">{item.daysLeft}</div>
-                <div className="text-xs text-stone-400">Осталось</div>
-              </div>
-            </div>
-          </div>
+          <ProgressRing pct={item.progressPercent} daysElapsed={item.daysElapsed} daysTotal={item.daysTotal} daysLeft={item.daysLeft} />
         ) : (
-          <div className="bg-stone-50 rounded-xl p-4 text-center">
-            <div className="text-2xl mb-1">⏸️</div>
-            <p className="text-stone-500 text-sm">Нет активной подписки</p>
+          <div style={{ textAlign: 'center', padding: '20px 0', color: 'hsl(210,8%,55%)', fontSize: 14 }}>
+            Нет активной подписки
           </div>
         )}
       </div>
 
-      {/* History section */}
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="font-bold text-stone-800">История оплат</h2>
-        <button
-          onClick={() => setShowForm(!showForm)}
-          className="flex items-center gap-1.5 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-700 hover:to-amber-600 text-white px-4 py-2 rounded-xl text-sm font-medium shadow-sm hover:shadow-md transition-all active:scale-95"
-        >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+      {/* Payments header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+        <h2 style={{ fontSize: 15, fontWeight: 600, color: 'hsl(210,15%,30%)', margin: 0 }}>
+          Платежи <span style={{ fontWeight: 400, color: 'hsl(210,8%,55%)' }}>({sorted.length})</span>
+        </h2>
+        <button onClick={() => setShowForm(!showForm)} style={{
+          display: 'flex', alignItems: 'center', gap: 5,
+          background: showForm ? 'hsl(210,15%,92%)' : accent, color: showForm ? 'hsl(210,15%,30%)' : 'white',
+          border: 'none', borderRadius: 8, padding: '8px 14px',
+          fontWeight: 500, fontSize: 12, cursor: 'pointer',
+          transition: 'all 0.15s', fontFamily: 'inherit',
+        }}>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round">
+            <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
           </svg>
           {showForm ? 'Отмена' : 'Платёж'}
         </button>
@@ -177,85 +151,87 @@ export default function History() {
 
       {/* Add payment form */}
       {showForm && (
-        <form onSubmit={handleAddPayment} className="bg-white rounded-2xl shadow-sm border border-amber-100/80 p-5 mb-5 space-y-4 animate-slideUp">
+        <form onSubmit={handleAdd} className="animate-slideUp" style={{
+          background: 'white', borderRadius: 12, border: '1px solid hsl(210,15%,92%)',
+          padding: 20, display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 16,
+        }}>
           <div>
-            <label className="block text-xs font-medium text-stone-500 mb-1.5">Сумма</label>
-            <div className="relative">
-              <input type="number" min="0" value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                className="w-full px-4 py-2.5 pr-12 border border-amber-200 rounded-xl bg-amber-50/30 focus:outline-none focus:ring-2 focus:ring-amber-400/40 focus:border-amber-400 transition-all text-sm"
+            <label style={{ fontSize: 11, fontWeight: 500, color: 'hsl(210,10%,45%)', display: 'block', marginBottom: 5 }}>Сумма</label>
+            <div style={{ position: 'relative' }}>
+              <input type="number" min="0" value={amount} onChange={e => setAmount(e.target.value)}
+                style={{ width: '100%', padding: '9px 12px', paddingRight: 30, fontSize: 13,
+                  border: '1px solid hsl(210,15%,88%)', borderRadius: 8, outline: 'none', fontFamily: 'inherit' }}
+                onFocus={e => { e.target.style.borderColor = accent; e.target.style.boxShadow = '0 0 0 3px hsla(210,60%,50%,0.12)' }}
+                onBlur={e => { e.target.style.borderColor = 'hsl(210,15%,88%)'; e.target.style.boxShadow = 'none' }}
                 disabled={saving} />
-              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-stone-400 text-sm">₸</span>
+              <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', color: 'hsl(210,8%,55%)', fontSize: 12 }}>₸</span>
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
             <div>
-              <label className="block text-xs font-medium text-stone-500 mb-1.5">Начало</label>
-              <input type="date" value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                className="w-full px-3 py-2.5 border border-amber-200 rounded-xl bg-amber-50/30 focus:outline-none focus:ring-2 focus:ring-amber-400/40 focus:border-amber-400 transition-all text-sm"
+              <label style={{ fontSize: 11, fontWeight: 500, color: 'hsl(210,10%,45%)', display: 'block', marginBottom: 5 }}>Начало</label>
+              <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)}
+                style={{ width: '100%', padding: '9px 12px', fontSize: 13,
+                  border: '1px solid hsl(210,15%,88%)', borderRadius: 8, outline: 'none', fontFamily: 'inherit' }}
                 disabled={saving} />
             </div>
             <div>
-              <label className="block text-xs font-medium text-stone-500 mb-1.5">Окончание</label>
-              <input type="date" value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                className="w-full px-3 py-2.5 border border-amber-200 rounded-xl bg-amber-50/30 focus:outline-none focus:ring-2 focus:ring-amber-400/40 focus:border-amber-400 transition-all text-sm"
+              <label style={{ fontSize: 11, fontWeight: 500, color: 'hsl(210,10%,45%)', display: 'block', marginBottom: 5 }}>Окончание</label>
+              <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)}
+                style={{ width: '100%', padding: '9px 12px', fontSize: 13,
+                  border: '1px solid hsl(210,15%,88%)', borderRadius: 8, outline: 'none', fontFamily: 'inherit' }}
                 disabled={saving} />
             </div>
           </div>
-          {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-xl text-xs">{error}</div>
-          )}
-          <button type="submit" disabled={saving}
-            className="w-full bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-700 hover:to-amber-600 disabled:from-amber-300 disabled:to-amber-300 text-white font-medium py-2.5 rounded-xl transition-all text-sm flex items-center justify-center gap-2"
-          >
-            {saving ? (
-              <><span className="inline-block w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />Сохранение...</>
-            ) : 'Добавить платёж'}
+          {error && <div style={{ background: 'hsl(0,65%,93%)', color: 'hsl(0,65%,45%)', padding: '8px 12px', borderRadius: 8, fontSize: 11 }}>{error}</div>}
+          <button type="submit" disabled={saving} style={{
+            width: '100%', padding: '10px', borderRadius: 8, border: 'none',
+            background: saving ? 'hsl(210,15%,80%)' : accent,
+            color: 'white', fontWeight: 600, fontSize: 12, cursor: saving ? 'default' : 'pointer',
+            fontFamily: 'inherit',
+          }}>
+            {saving ? 'Сохранение...' : 'Добавить платёж'}
           </button>
         </form>
       )}
 
       {/* Payment list */}
-      {sortedPayments.length === 0 ? (
-        <div className="text-center py-12">
-          <div className="text-3xl mb-3">💸</div>
-          <p className="text-stone-400 text-sm">Платежей пока нет</p>
-        </div>
+      {sorted.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '40px 0', color: 'hsl(210,8%,55%)', fontSize: 13 }}>Нет платежей</div>
       ) : (
-        <div className="flex flex-col gap-2.5">
-          {sortedPayments.map((p, i) => {
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {sorted.map((p, i) => {
             const isActive = item.activePayment?.id === p.id
-            const isLast = i === 0
             return (
-              <div key={p.id}
-                className={`bg-white rounded-xl border p-4 flex items-center justify-between transition-all animate-slideUp ${
-                  isActive
-                    ? 'border-amber-400 shadow-sm ring-1 ring-amber-300/50'
-                    : 'border-amber-100/60 hover:border-amber-200'
-                }`}
-                style={{ animationDelay: `${i * 0.05}s` }}
-              >
-                <div className="flex items-start gap-3">
-                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-sm shrink-0 ${
-                    isActive ? 'bg-amber-100 text-amber-700' : 'bg-stone-100 text-stone-400'
-                  }`}>
-                    {isActive ? '✓' : '💳'}
+              <div key={p.id} className="animate-slideUp" style={{
+                animationDelay: `${i * 0.04}s`,
+                background: 'white', borderRadius: 10,
+                border: `1px solid ${isActive ? 'hsl(210,60%,85%)' : 'hsl(210,15%,92%)'}`,
+                padding: '14px 16px',
+                display: 'flex', alignItems: 'center', gap: 12,
+                boxShadow: isActive ? '0 0 0 2px hsla(210,60%,50%,0.08)' : 'none',
+              }}>
+                <div style={{
+                  width: 32, height: 32, borderRadius: 8,
+                  background: isActive ? 'hsl(210,60%,95%)' : 'hsl(210,15%,95%)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 14, color: isActive ? accent : 'hsl(210,8%,55%)',
+                  flexShrink: 0,
+                }}>
+                  {isActive ? '✓' : '💳'}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: 500, fontSize: 13, color: 'hsl(210,15%,25%)' }}>
+                    {format(parseISO(p.start_date), 'd MMM yyyy', { locale: ru })} — {format(parseISO(p.end_date), 'd MMM yyyy', { locale: ru })}
                   </div>
-                  <div>
-                    <div className="font-medium text-sm text-stone-700">
-                      {format(parseISO(p.start_date), 'd MMM yyyy', { locale: ru })} — {format(parseISO(p.end_date), 'd MMM yyyy', { locale: ru })}
-                    </div>
-                    <div className="text-xs text-stone-400 mt-0.5">
-                      {p.amount.toLocaleString('ru-RU')} ₸
-                      {isActive && <span className="ml-2 text-amber-600 font-medium">· Активен</span>}
-                    </div>
+                  <div style={{ fontSize: 12, color: 'hsl(210,8%,55%)', marginTop: 2 }}>
+                    {p.amount.toLocaleString('ru-RU')} ₸
+                    {isActive && <span style={{ color: accent, fontWeight: 500, marginLeft: 6 }}>· Сейчас</span>}
                   </div>
                 </div>
-                <div className="text-right shrink-0 ml-3">
-                  {isLast && (
-                    <span className="text-[10px] font-semibold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-lg">
+                <div style={{ flexShrink: 0 }}>
+                  {i === 0 && (
+                    <span style={{ fontSize: 10, fontWeight: 600, background: 'hsl(210,60%,95%)', color: accent, padding: '3px 8px', borderRadius: 6 }}>
                       Последний
                     </span>
                   )}

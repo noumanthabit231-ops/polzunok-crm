@@ -9,34 +9,44 @@ export default function App() {
 
   return (
     <div className="flex flex-col min-h-dvh">
-      {/* Header */}
-      <header className="bg-white/80 backdrop-blur-lg border-b border-amber-200/50 px-4 py-3 sticky top-0 z-20">
-        <div className="max-w-2xl mx-auto w-full flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2.5 no-underline group">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-500 to-amber-700 flex items-center justify-center text-white text-lg shadow-sm group-hover:shadow-md transition-shadow">
-              📅
-            </div>
-            <div>
-              <span className="font-bold text-stone-800 text-lg tracking-tight">Ползунок</span>
-              <span className="text-amber-600 font-bold text-lg tracking-tight">.CRM</span>
-            </div>
+      <header style={{
+        background: 'rgba(255,255,255,0.8)',
+        backdropFilter: 'blur(12px)',
+        WebkitBackdropFilter: 'blur(12px)',
+        borderBottom: '1px solid hsl(210, 15%, 90%)',
+      }} className="px-4 py-3 sticky top-0 z-20">
+        <div className="max-w-xl mx-auto w-full flex items-center justify-between">
+          <Link to="/" className="flex items-center gap-2.5 no-underline">
+            <div style={{
+              width: 32, height: 32, borderRadius: 8,
+              background: 'hsl(210, 60%, 50%)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 16, color: 'white', fontWeight: 600,
+            }}>P</div>
+            <span style={{ fontWeight: 600, fontSize: 15, color: 'hsl(210, 15%, 20%)', letterSpacing: '-0.3px' }}>
+              Ползунок
+            </span>
           </Link>
           {isHome && (
-            <Link
-              to="/add"
-              className="flex items-center gap-1.5 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-700 hover:to-amber-600 text-white px-4 py-2 rounded-xl font-medium shadow-sm hover:shadow-md transition-all active:scale-95 no-underline text-sm"
+            <Link to="/add" style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              background: 'hsl(210, 60%, 50%)', color: 'white',
+              padding: '8px 16px', borderRadius: 8,
+              fontWeight: 500, fontSize: 13,
+              textDecoration: 'none', transition: 'all 0.15s',
+            }}
+              className="hover:bg-[hsl(210,60%,43%)] active:scale-[0.97]"
             >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round">
+                <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
               </svg>
-              <span>Новое</span>
+              Новое
             </Link>
           )}
         </div>
       </header>
 
-      {/* Main */}
-      <main className="flex-1 px-4 py-6 max-w-2xl mx-auto w-full">
+      <main className="flex-1 px-4 py-6 max-w-xl mx-auto w-full">
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/add" element={<AddEstablishment />} />

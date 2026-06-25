@@ -6,7 +6,7 @@ import {
   computeEstablishmentStatus,
   deleteEstablishment,
 } from '../api'
-import type { Establishment, Payment, EstablishmentWithStatus } from '../types'
+import type { EstablishmentWithStatus } from '../types'
 import { format, parseISO } from 'date-fns'
 import { ru } from 'date-fns/locale'
 

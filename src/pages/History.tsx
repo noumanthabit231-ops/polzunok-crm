@@ -6,7 +6,7 @@ import {
   createPayment,
   computeEstablishmentStatus,
 } from '../api'
-import type { EstablishmentWithStatus, Payment } from '../types'
+import type { EstablishmentWithStatus } from '../types'
 import { format, parseISO } from 'date-fns'
 import { ru } from 'date-fns/locale'
 
@@ -228,7 +228,7 @@ export default function History() {
         </div>
       ) : (
         <div className="flex flex-col gap-2">
-          {sortedPayments.map((p, idx) => (
+          {sortedPayments.map((p) => (
             <div
               key={p.id}
               className={`bg-white rounded-xl border p-4 flex items-center justify-between ${

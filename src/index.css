@@ -1,0 +1,30 @@
+@import "tailwindcss";
+
+:root {
+  --beige-50: #fdf8f0;
+  --beige-100: #f5e6d0;
+  --beige-200: #e8d5b8;
+  --orange-400: #f59e0b;
+  --orange-500: #d97706;
+  --orange-600: #b45309;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+    'Helvetica Neue', Arial, sans-serif;
+  background-color: var(--beige-50);
+  color: #1f2937;
+  min-height: 100dvh;
+}
+
+#root {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}

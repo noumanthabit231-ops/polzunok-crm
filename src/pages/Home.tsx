@@ -12,24 +12,73 @@ import { ru } from 'date-fns/locale'
 
 const accent = 'hsl(210, 60%, 50%)'
 
-function ProgressBar({ pct, daysElapsed, daysLeft }: {
-  pct: number; daysElapsed: number; daysLeft: number
+function ProgressBar({ daysElapsed, daysTotal, daysLeft }: {
+  daysElapsed: number; daysTotal: number; daysLeft: number
 }) {
+  const pct = Math.round((daysElapsed / daysTotal) * 100)
   const color = pct < 60 ? 'hsl(160, 60%, 45%)' :
     pct < 80 ? 'hsl(38, 80%, 50%)' :
     pct < 92 ? 'hsl(25, 80%, 50%)' : 'hsl(0, 65%, 55%)'
-  const bg = pct < 60 ? 'hsl(160, 60%, 92%)' :
-    pct < 80 ? 'hsl(38, 80%, 92%)' :
-    pct < 92 ? 'hsl(25, 80%, 92%)' : 'hsl(0, 65%, 93%)'
+
+  const maxDots = Math.min(daysTotal, 60)
+  const step = daysTotal / maxDots
+  const filledDots = Math.round(daysElapsed / step)
 
   return (
     <div>
-      <div style={{ height: 6, background: bg, borderRadius: 3, overflow: 'hidden' }}>
-        <div style={{ width: `${Math.max(2, pct)}%`, height: '100%', background: color, borderRadius: 3, transition: 'width 0.6s ease' }} />
+      <div style={{ display: 'flex', gap: 2, alignItems: 'center', height: 14 }}>
+        {Array.from({ length: maxDots }).map((_, i) => {
+          const isFilled = i < filledDots
+          const isToday = i === Math.min(filledDots, maxDots - 1) && daysLeft > 0
+          const isFirst = i === 0
+          const isLast = i === maxDots - 1
+          let dotColor = 'hsl(210, 15%, 88%)'
+          let dotWidth = 6
+          let dotHeight = 6
+          let extra = {}
+
+          if (isToday) {
+            dotColor = color
+            dotWidth = 10
+            dotHeight = 10
+            extra = {
+              boxShadow: `0 0 0 3px ${color}33`,
+              borderRadius: 5,
+              transition: 'all 0.3s ease',
+            }
+          } else if (isFilled) {
+            dotColor = color
+          }
+
+          if (isFirst || isLast) {
+            dotWidth = isToday ? 10 : 8
+            dotHeight = isToday ? 10 : 8
+            extra = {
+              ...extra,
+              borderRadius: isFirst ? '4px 1px 1px 4px' : '1px 4px 4px 1px',
+            }
+          }
+
+          return (
+            <div
+              key={i}
+              title={`День ${Math.round(i * step + 1)}`}
+              style={{
+                flex: 1,
+                height: dotHeight,
+                maxWidth: dotWidth,
+                background: dotColor,
+                borderRadius: 3,
+                transition: 'all 0.3s ease',
+                ...extra,
+              }}
+            />
+          )
+        })}
       </div>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6, fontSize: 12, color: 'hsl(210, 8%, 55%)' }}>
-        <span>{daysElapsed} дн</span>
-        <span style={{ fontWeight: 500, color: 'hsl(210, 10%, 40%)' }}>{daysLeft > 0 ? `осталось ${daysLeft}` : 'последний день'}</span>
+        <span style={{ fontWeight: 500, color: 'hsl(210, 10%, 40%)' }}>День {daysElapsed}</span>
+        <span>{daysLeft > 0 ? `Осталось ${daysLeft} дн` : 'Последний день'}</span>
       </div>
     </div>
   )
@@ -170,8 +219,8 @@ export default function Home() {
 
                 {item.isActive ? (
                   <ProgressBar
-                    pct={item.progressPercent}
                     daysElapsed={item.daysElapsed}
+                    daysTotal={item.daysTotal}
                     daysLeft={item.daysLeft}
                   />
                 ) : (

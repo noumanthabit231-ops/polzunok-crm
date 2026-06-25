@@ -1,14 +1,5 @@
 @import "tailwindcss";
 
-:root {
-  --beige-50: #fdf8f0;
-  --beige-100: #f5e6d0;
-  --beige-200: #e8d5b8;
-  --orange-400: #f59e0b;
-  --orange-500: #d97706;
-  --orange-600: #b45309;
-}
-
 * {
   box-sizing: border-box;
   margin: 0;
@@ -16,9 +7,8 @@
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
-    'Helvetica Neue', Arial, sans-serif;
-  background-color: var(--beige-50);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: linear-gradient(135deg, #fdf8f0 0%, #f5e6d0 100%);
   color: #1f2937;
   min-height: 100dvh;
 }
@@ -28,3 +18,28 @@ body {
   display: flex;
   flex-direction: column;
 }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #d4a574; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #b8834a; }
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+.animate-fadeIn { animation: fadeIn 0.3s ease-out; }
+.animate-slideUp { animation: slideUp 0.4s ease-out; }
+.animate-slideUp-1 { animation: slideUp 0.4s ease-out 0.05s both; }
+.animate-slideUp-2 { animation: slideUp 0.4s ease-out 0.1s both; }
+.animate-slideUp-3 { animation: slideUp 0.4s ease-out 0.15s both; }
